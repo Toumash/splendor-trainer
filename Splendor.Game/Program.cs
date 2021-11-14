@@ -6,31 +6,47 @@ namespace Splendor.Game
 
     public class Program
     {
-        public static void Main(string[] args)
+        public static void Main()
         {
-            Console.WriteLine("Hello, World!");
             var deck = new List<Card>()
-        {
-        new Card(White, 0,new Price().Set(Blue, 1),T1)
-        };
+            {
+                new Card(White, 0, new Price().Set(Blue, 1),T1),
+                new Card(White, 0, new Price().Set(Green, 1),T2),
+                new Card(White, 0, new Price().Set(Blue, 1),T3)
+            };
             var artistDeck = new List<Artist>(){
-            new Artist(3, new Price().Set(Blue,3).Set(Green,3).Set(White,3))
-        };
-            var g = new GameBoard(deck, artistDeck);
-            System.Console.WriteLine(g);
+                new Artist(3, new Price().Set(Blue,3).Set(Green,3).Set(White,3))
+            };
+            var g = new GameBoard()
+            {
+                Deck = deck,
+                ArtistDeck = artistDeck,
+            };
+            new StartGameCommand(g).Execute();
+            while (true)
+            {
+                Console.Clear();
+                Console.Write(g);
+                System.Threading.Thread.Sleep(1000);
+            }
         }
     }
 
     public class GameBoard
     {
-        public List<Card> Deck { get; init; }
-        public List<Card> VisibleCards { get; private set; }
-        public List<Artist> ArtistDeck { get; init; }
+        public List<Card> Deck { get; set; } = new List<Card>();
+        public List<Card> VisibleCards { get; set; } = new List<Card>();
+        public List<Artist> ArtistDeck { get; set; } = new List<Artist>();
+        public List<Artist> VisibleArtistsDeck { get; set; } = new List<Artist>();
 
-        public GameBoard(List<Card> deck, List<Artist> artistDeck)
+        public override string ToString()
         {
-            Deck = deck;
-            ArtistDeck = artistDeck;
+
+            string Tier(Tier tier)
+            {
+                return string.Join(",", VisibleCards.Where(c => c.Tier == tier).Select(vc => vc.ToString()));
+            }
+            return $"T1 🃏:[{Tier(T1)}]\nT2 🃏:[{Tier(T2)}]\nT3 🃏:[{Tier(T3)}]";
         }
     }
 
@@ -52,7 +68,8 @@ namespace Splendor.Game
     public enum Tier
     {
         T1,
-        T2
+        T2,
+        T3
     }
     public class Card
     {
@@ -74,14 +91,14 @@ namespace Splendor.Game
         public Tier Tier { get; init; }
 
         public override string ToString() =>
-             $"{Tier}s:{Score} c:{Color} p:{Price}";
+             $"{Color.ToEmoji()} {Tier.ToEmoji()}  | {Score}🎯 {Price}";
     }
     public class Price
     {
         public Dictionary<Color, int> _price = new Dictionary<Color, int>();
 
         public override string ToString() =>
-             "$:" + string.Join(" ", _price.Select(p => $"{p.Key}{p.Value}"));
+             "$:" + string.Join(" ", _price.Select(p => $"{p.Value}{p.Key.ToEmoji()}"));
 
         public bool IsAffordable(Dictionary<Color, int> availableTokens)
         {
@@ -116,6 +133,33 @@ namespace Splendor.Game
         Blue,
         White,
         Yellow
+    }
+
+    public static class StringExtensions
+    {
+        public static string ToEmoji(this Tier tier)
+        {
+            return tier switch
+            {
+                Tier.T1 => "1️⃣",
+                Tier.T2 => "2️⃣",
+                Tier.T3 => "3️⃣",
+                _ => "???"
+            };
+        }
+        public static string ToEmoji(this Color color)
+        {
+            return color switch
+            {
+                Color.Green => "🟩",
+                Color.White => "⬜",
+                Color.Blue => "🟦",
+                Color.Red => "🟥",
+                Color.Yellow => "🟨",
+                Color.Brown => "🟫",
+                _ => "???"
+            };
+        }
     }
 
     public interface GameAction
@@ -161,6 +205,24 @@ namespace Splendor.Game
         public void Execute()
         {
             throw new NotImplementedException();
+        }
+    }
+
+    public class StartGameCommand
+    {
+        public StartGameCommand(GameBoard gameBoard)
+        {
+            GameBoard = gameBoard;
+        }
+
+        public GameBoard GameBoard { get; }
+
+        public void Execute()
+        {
+            var tier1 = GameBoard.Deck.Where(c => c.Tier == T1).Take(4);
+            var tier2 = GameBoard.Deck.Where(c => c.Tier == T2).Take(4);
+            var tier3 = GameBoard.Deck.Where(c => c.Tier == T3).Take(4);
+            GameBoard.VisibleCards = new[] { tier1, tier2, tier3 }.SelectMany(l => l).ToList();
         }
     }
 }

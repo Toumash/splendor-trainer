@@ -1,10 +1,15 @@
 ﻿using Splendor.Game;
+using static Splendor.Game.Color;
+using static Splendor.Game.Tier;
 
-public class Program
+namespace Splendor.Cli
 {
-    public static void Main()
+    public class Program
     {
-        new GameBoard();
+        public static void Main()
+        {
+
+        }
     }
 }
 
