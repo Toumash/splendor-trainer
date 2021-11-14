@@ -10,12 +10,16 @@ namespace Splendor.Game
         {
             var deck = new List<Card>()
             {
-                new Card(White, 0, new TokenBag().Set(Blue, 1),T1),
-                new Card(White, 0, new TokenBag().Set(Green, 1),T2),
-                new Card(White, 0, new TokenBag().Set(Blue, 1),T3)
+                new Card(White, 0, CrystalSet.New().Set(Blue, 1),T1),
+                new Card(White, 0, CrystalSet.New().Set(Green, 1),T2),
+                new Card(White, 0, CrystalSet.New().Set(Blue, 1),T3)
             };
             var artistDeck = new List<Artist>(){
-                new Artist(3, new TokenBag().Set(Blue,3).Set(Green,3).Set(White,3))
+                new Artist(3, CrystalSet.New()
+                    .Set(Blue,3)
+                    .Set(Green,3)
+                    .Set(White,3)
+                )
             };
             var g = new GameBoard()
             {
@@ -37,7 +41,7 @@ namespace Splendor.Game
         public List<Card> VisibleCards { get; set; } = new List<Card>();
         public List<Artist> ArtistDeck { get; set; } = new List<Artist>();
         public List<Artist> VisibleArtistsDeck { get; set; } = new List<Artist>();
-        public TokenBag Tokens { get; set; } = new TokenBag();
+        public CrystalSet Tokens { get; set; } = new CrystalSet();
 
         public override string ToString()
         {
@@ -46,31 +50,31 @@ namespace Splendor.Game
             {
                 return string.Join(",", VisibleCards.Where(c => c.Tier == tier).Select(vc => vc.ToString()));
             }
-            return $"T1 🃏:[{Tier(T1)}]\nT2 🃏:[{Tier(T2)}]\nT3 🃏:[{Tier(T3)}]";
+            return $"T1 :[{Tier(T1)}]\nT2 :[{Tier(T2)}]\nT3 :[{Tier(T3)}]";
         }
     }
     public class Player
     {
-        public Player(TokenBag tokens, List<Card> cards, List<Card> reservedCards)
+        public Player(CrystalSet tokens, List<Card> cards, List<Card> reservedCards)
         {
             Tokens = tokens;
             Cards = cards;
             ReservedCards = reservedCards;
         }
 
-        public TokenBag Tokens { get; }
+        public CrystalSet Tokens { get; }
         public List<Card> Cards { get; }
         public List<Card> ReservedCards { get; }
     }
     public class Artist
     {
-        public Artist(int score, TokenBag price)
+        public Artist(int score, CrystalSet price)
         {
             Price = price;
             Score = score;
         }
 
-        public TokenBag Price { get; init; }
+        public CrystalSet Price { get; init; }
         public int Score { get; init; }
 
         public override string ToString() =>
@@ -82,7 +86,7 @@ namespace Splendor.Game
         public Card(
             Color color,
             int score,
-            TokenBag price,
+            CrystalSet price,
             Tier tier)
         {
             Color = color;
@@ -93,30 +97,30 @@ namespace Splendor.Game
 
         public Color Color { get; init; }
         public int Score { get; init; }
-        public TokenBag Price { get; init; }
+        public CrystalSet Price { get; init; }
         public Tier Tier { get; init; }
 
         public override string ToString() =>
-             $"{Color.ToEmoji()} {Tier.ToEmoji()}  | {Score}🎯 💲{Price}";
+             $"{Score}{Color.ToEmoji()}💲{Price}";
     }
-    public class TokenBag
+    public class CrystalSet
     {
         public Dictionary<Color, int> _tokens = new Dictionary<Color, int>();
 
         public override string ToString() =>
-             string.Join(" ", _tokens.Select(p => $"{p.Value}{p.Key.ToEmoji()}"));
+             string.Join(" ", _tokens.Select(p => string.Concat(Enumerable.Repeat(p.Key.ToEmoji(), p.Value))));
 
-        public bool ContainsRequired(TokenBag required) =>
+        public bool ContainsRequired(CrystalSet required) =>
             required.GetKeyValuePairs().All(r =>
                 _tokens.ContainsKey(r.Key)
                 && _tokens[r.Key] >= r.Value
             );
 
-        public static TokenBag New()
+        public static CrystalSet New()
         {
-            return new TokenBag();
+            return new CrystalSet();
         }
-        public TokenBag Set(Color index, int value)
+        public CrystalSet Set(Color index, int value)
         {
             _tokens[index] = value;
             return this;
