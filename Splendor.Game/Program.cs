@@ -1,21 +1,21 @@
 ﻿using static Splendor.Game.Tier;
 using static Splendor.Game.Color;
+using System.Linq;
 
 namespace Splendor.Game
 {
-
     public class Program
     {
         public static void Main()
         {
             var deck = new List<Card>()
             {
-                new Card(White, 0, new Price().Set(Blue, 1),T1),
-                new Card(White, 0, new Price().Set(Green, 1),T2),
-                new Card(White, 0, new Price().Set(Blue, 1),T3)
+                new Card(White, 0, new TokenBag().Set(Blue, 1),T1),
+                new Card(White, 0, new TokenBag().Set(Green, 1),T2),
+                new Card(White, 0, new TokenBag().Set(Blue, 1),T3)
             };
             var artistDeck = new List<Artist>(){
-                new Artist(3, new Price().Set(Blue,3).Set(Green,3).Set(White,3))
+                new Artist(3, new TokenBag().Set(Blue,3).Set(Green,3).Set(White,3))
             };
             var g = new GameBoard()
             {
@@ -31,13 +31,13 @@ namespace Splendor.Game
             }
         }
     }
-
     public class GameBoard
     {
         public List<Card> Deck { get; set; } = new List<Card>();
         public List<Card> VisibleCards { get; set; } = new List<Card>();
         public List<Artist> ArtistDeck { get; set; } = new List<Artist>();
         public List<Artist> VisibleArtistsDeck { get; set; } = new List<Artist>();
+        public TokenBag Tokens { get; set; } = new TokenBag();
 
         public override string ToString()
         {
@@ -49,34 +49,40 @@ namespace Splendor.Game
             return $"T1 🃏:[{Tier(T1)}]\nT2 🃏:[{Tier(T2)}]\nT3 🃏:[{Tier(T3)}]";
         }
     }
+    public class Player
+    {
+        public Player(TokenBag tokens, List<Card> cards, List<Card> reservedCards)
+        {
+            Tokens = tokens;
+            Cards = cards;
+            ReservedCards = reservedCards;
+        }
 
-
+        public TokenBag Tokens { get; }
+        public List<Card> Cards { get; }
+        public List<Card> ReservedCards { get; }
+    }
     public class Artist
     {
-        public Artist(int score, Price price)
+        public Artist(int score, TokenBag price)
         {
             Price = price;
             Score = score;
         }
 
-        public Price Price { get; init; }
+        public TokenBag Price { get; init; }
         public int Score { get; init; }
 
         public override string ToString() =>
             $"Artist: {Score} {Price}";
     }
-    public enum Tier
-    {
-        T1,
-        T2,
-        T3
-    }
+    public enum Tier { T1, T2, T3 }
     public class Card
     {
         public Card(
             Color color,
             int score,
-            Price price,
+            TokenBag price,
             Tier tier)
         {
             Color = color;
@@ -87,54 +93,42 @@ namespace Splendor.Game
 
         public Color Color { get; init; }
         public int Score { get; init; }
-        public Price Price { get; init; }
+        public TokenBag Price { get; init; }
         public Tier Tier { get; init; }
 
         public override string ToString() =>
-             $"{Color.ToEmoji()} {Tier.ToEmoji()}  | {Score}🎯 {Price}";
+             $"{Color.ToEmoji()} {Tier.ToEmoji()}  | {Score}🎯 💲{Price}";
     }
-    public class Price
+    public class TokenBag
     {
-        public Dictionary<Color, int> _price = new Dictionary<Color, int>();
+        public Dictionary<Color, int> _tokens = new Dictionary<Color, int>();
 
         public override string ToString() =>
-             "$:" + string.Join(" ", _price.Select(p => $"{p.Value}{p.Key.ToEmoji()}"));
+             string.Join(" ", _tokens.Select(p => $"{p.Value}{p.Key.ToEmoji()}"));
 
-        public bool IsAffordable(Dictionary<Color, int> availableTokens)
+        public bool ContainsRequired(TokenBag required) =>
+            required.GetKeyValuePairs().All(r =>
+                _tokens.ContainsKey(r.Key)
+                && _tokens[r.Key] >= r.Value
+            );
+
+        public static TokenBag New()
         {
-            foreach (var priceElement in _price)
-            {
-                if (!availableTokens.ContainsKey(priceElement.Key))
-                {
-                    return false;
-                }
-                if (availableTokens[priceElement.Key] < priceElement.Value)
-                {
-                    return false;
-                }
-            }
-            return true;
+            return new TokenBag();
         }
-        public static Price New()
+        public TokenBag Set(Color index, int value)
         {
-            return new Price();
-        }
-        public Price Set(Color index, int value)
-        {
-            _price[index] = value;
+            _tokens[index] = value;
             return this;
         }
-    }
-    public enum Color
-    {
-        Green,
-        Red,
-        Brown,
-        Blue,
-        White,
-        Yellow
-    }
 
+        public Dictionary<Color, int> GetKeyValuePairs()
+        {
+            return _tokens;
+        }
+    }
+    public enum Color { Green, Red, Brown, Blue, White, Yellow }
+    #region Extensions
     public static class StringExtensions
     {
         public static string ToEmoji(this Tier tier)
@@ -161,53 +155,67 @@ namespace Splendor.Game
             };
         }
     }
+    #endregion
+    public abstract class GameAction
+    {
+        public GameAction(Player player, GameBoard gameBoard)
+        {
+            Player = player;
+            GameBoard = gameBoard;
+        }
 
-    public interface GameAction
-    {
-        void Execute();
-    }
-    public class PassAction : GameAction
-    {
-        public PassAction() { }
-        public void Execute() { }
+        public Player Player { get; }
+        public GameBoard GameBoard { get; }
+
+        public abstract void Execute();
     }
     public class TakeTokensAction : GameAction
     {
 
-        public TakeTokensAction(params Color[] tokens)
+        public TakeTokensAction(Player player, GameBoard gameBoard, params Color[] tokens) : base(player, gameBoard)
         {
             Tokens = tokens;
         }
 
         public Color[] Tokens { get; }
 
-        public void Execute()
+        public override void Execute()
         {
-
         }
     }
     public class ReservedCardAction : GameAction
     {
-        public void Execute()
+        public ReservedCardAction(Player player, GameBoard gameBoard) : base(player, gameBoard)
+        {
+        }
+
+        public override void Execute()
         {
             throw new NotImplementedException();
         }
     }
     public class BuyCardAction : GameAction
     {
-        public void Execute()
+        public BuyCardAction(Player player, GameBoard gameBoard) : base(player, gameBoard)
+        {
+        }
+
+        public override void Execute()
         {
             throw new NotImplementedException();
         }
     }
     public class BuyReservedCardAction : GameAction
     {
-        public void Execute()
+        public BuyReservedCardAction(Player player, GameBoard gameBoard) : base(player, gameBoard)
+        {
+        }
+
+        public override void Execute()
         {
             throw new NotImplementedException();
         }
     }
-
     public class StartGameCommand
     {
         public StartGameCommand(GameBoard gameBoard)
