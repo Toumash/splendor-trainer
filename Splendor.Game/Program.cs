@@ -8,23 +8,10 @@ namespace Splendor.Game
     {
         public static void Main()
         {
-            var deck = new List<Card>()
-            {
-                new Card(White, 0, CrystalSet.New().Set(Blue, 1),T1),
-                new Card(White, 0, CrystalSet.New().Set(Green, 1),T2),
-                new Card(White, 0, CrystalSet.New().Set(Blue, 1),T3)
-            };
-            var artistDeck = new List<Artist>(){
-                new Artist(3, CrystalSet.New()
-                    .Set(Blue,3)
-                    .Set(Green,3)
-                    .Set(White,3)
-                )
-            };
             var g = new GameBoard()
             {
-                Deck = deck,
-                ArtistDeck = artistDeck,
+                Deck = Deck.Cards,
+                ArtistDeck = Deck.Artists,
             };
             new StartGameCommand(g).Execute();
             while (true)
@@ -48,9 +35,9 @@ namespace Splendor.Game
 
             string Tier(Tier tier)
             {
-                return string.Join(",", VisibleCards.Where(c => c.Tier == tier).Select(vc => vc.ToString()));
+                return string.Join("\n", VisibleCards.Where(c => c.Tier == tier).Select(vc => vc.ToString()));
             }
-            return $"T1 :[{Tier(T1)}]\nT2 :[{Tier(T2)}]\nT3 :[{Tier(T3)}]";
+            return $"=== T1 ===\n{Tier(T1)}\n=== T2 ===\n{Tier(T2)}\n=== T3 ===\n{Tier(T3)}";
         }
     }
     public class Player
@@ -111,7 +98,7 @@ namespace Splendor.Game
              string.Join(" ", _tokens.Select(p => string.Concat(Enumerable.Repeat(p.Key.ToEmoji(), p.Value))));
 
         public bool ContainsRequired(CrystalSet required) =>
-            required.GetKeyValuePairs().All(r =>
+            required.GetCostLines().All(r =>
                 _tokens.ContainsKey(r.Key)
                 && _tokens[r.Key] >= r.Value
             );
@@ -125,11 +112,81 @@ namespace Splendor.Game
             _tokens[index] = value;
             return this;
         }
+        public int this[Color index]
+        {
+            get
+            {
+                return _tokens[index];
+            }
+        }
 
-        public Dictionary<Color, int> GetKeyValuePairs()
+        public Dictionary<Color, int> GetCostLines()
         {
             return _tokens;
         }
+
+        public static CrystalSet operator +(CrystalSet a, Crystal b)
+        {
+            var obj = new CrystalSet();
+            foreach (var x in a.GetCostLines())
+            {
+
+                if (b.Color == x.Key)
+                {
+
+                    obj.Set(x.Key, a[x.Key] + 1);
+                }
+                else
+                {
+                    obj.Set(x.Key, a[x.Key]);
+                }
+            }
+            return obj;
+        }
+
+        public static CrystalSet operator +(CrystalSet a, CrystalSet b)
+        {
+            var obj = new CrystalSet();
+            foreach (var x in a.GetCostLines())
+            {
+                obj.Set(x.Key, a[x.Key] + b[x.Key]);
+            }
+            foreach (var x in b.GetCostLines().Where(line => !a.GetCostLines().ContainsKey(line.Key)))
+            {
+                obj.Set(x.Key, x.Value);
+            }
+            return obj;
+        }
+    }
+    public class Crystal
+    {
+        public Crystal(Color color)
+        {
+            Color = color;
+        }
+
+        public Color Color { get; }
+        public static CrystalSet operator +(Crystal a, Crystal b)
+        {
+            var obj = new CrystalSet();
+            if (a.Color == b.Color)
+            {
+                obj.Set(a.Color, 2);
+            }
+            else
+            {
+                obj.Set(a.Color, 1);
+                obj.Set(b.Color, 1);
+            }
+            return obj;
+
+        }
+        public static Crystal Green = new Crystal(Color.Green);
+        public static Crystal White = new Crystal(Color.White);
+        public static Crystal Red = new Crystal(Color.Red);
+        public static Crystal Yellow = new Crystal(Color.Yellow);
+        public static Crystal Brown = new Crystal(Color.Brown);
+        public static Crystal Blue = new Crystal(Color.Blue);
     }
     public enum Color { Green, Red, Brown, Blue, White, Yellow }
     #region Extensions
