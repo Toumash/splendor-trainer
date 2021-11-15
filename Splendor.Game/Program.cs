@@ -95,7 +95,7 @@ namespace Splendor.Game
         public Dictionary<Color, int> _tokens = new Dictionary<Color, int>();
 
         public override string ToString() =>
-             string.Join(" ", _tokens.Select(p => string.Concat(Enumerable.Repeat(p.Key.ToEmoji(), p.Value))));
+             string.Join(" ", _tokens.Select(p => string.Concat(Enumerable.Repeat(p.Key.ToEmoji(), p.Value))).Where(s => !string.IsNullOrWhiteSpace(s)));
 
         public bool ContainsRequired(CrystalSet required) =>
             required.GetCostLines().All(r =>
